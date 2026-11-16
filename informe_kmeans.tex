@@ -1,0 +1,281 @@
+\documentclass[11pt, a4paper]{article}
+
+\usepackage[a4paper, margin=2.5cm]{geometry}
+\usepackage{fontspec}
+\usepackage[spanish, english, bidi=basic, provide=*]{babel}
+\babelprovide[import, onchar=ids fonts]{english}
+\babelfont{rm}{Noto Sans}
+\usepackage{amsmath, amssymb}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{enumitem}
+\usepackage{xcolor}
+\usepackage{hyperref}
+
+\definecolor{primary}{HTML}{1B365D}
+\definecolor{accent}{HTML}{2B6CB0}
+\definecolor{codebg}{HTML}{F7FAFC}
+\definecolor{rulegray}{HTML}{CBD5E0}
+
+\hypersetup{
+    colorlinks=true,
+    linkcolor=accent,
+    citecolor=accent,
+    urlcolor=accent
+}
+
+\begin{document}
+
+% --- ENCABEZADO DEL INFORME ---
+\begin{center}
+    {\small \textsc{Universidad del Norte $\cdot$ Departamento de Ingeniería de Sistemas y Computación}}\\[0.25cm]
+    {\large \textbf{Informe Proyecto Final: Algoritmos y Complejidad}}\\[0.35cm]
+    {\LARGE \textbf{\textcolor{primary}{Proyecto \#8: Clustering con K-Means}}}\\[0.45cm]
+    \rule{\textwidth}{1.2pt}\\[0.35cm]
+    \textbf{Desarrollado por:}\\
+    Daniela Amaya $\cdot$ Anthony Amaya $\cdot$ Álvaro Useche Arias\\[0.2cm]
+    {\small Basado en \textit{Introduction to Algorithms} (4.ª ed., Cormen et al.), Sección 33.1}
+\end{center}
+\vspace{0.3cm}
+\hrule
+\vspace{0.6cm}
+
+% --- SECCIÓN 1: ESTUDIO TEÓRICO DEL TEMA ASIGNADO ---
+\section{Estudio teórico del tema asignado}
+
+\subsection{Definición formal y formulación matemática del problema}
+
+El agrupamiento (\textit{clustering}) particional no supervisado consiste en dividir un conjunto de $n$ observaciones en $k$ grupos, de modo que los elementos dentro de un mismo grupo sean cercanos entre sí y los grupos sean mutuamente distintos. Formalmente, sea $X = \{x_1, x_2, \dots, x_n\} \subset \mathbb{R}^d$ un conjunto de $n$ vectores y sea $k \leq n$ un entero positivo. Una partición $C = \{C_1, \dots, C_k\}$ debe satisfacer $C_j \neq \emptyset$, $C_i \cap C_j = \emptyset$ para $i \neq j$, y $\bigcup_{j=1}^{k} C_j = X$. El objetivo del problema de $k$-medias es minimizar la suma de errores cuadráticos intra-cluster (\textit{Within-Cluster Sum of Squares}, WCSS), también denominada inercia \cite{cormen2022, lloyd1982}:
+\begin{equation}
+    \arg\min_{C} \sum_{j=1}^{k} \sum_{x_i \in C_j} \|x_i - \mu_j\|_2^2, \quad \mu_j \in \mathbb{R}^d,
+\end{equation}
+donde $\|\cdot\|_2$ es la norma euclidiana y $\mu_j$ representa el centro del grupo $C_j$. Para una partición fija, el valor óptimo de cada centro se obtiene resolviendo el siguiente problema de minimización:
+\begin{equation}
+    \mu_j^* = \arg\min_{\mu \in \mathbb{R}^d} \sum_{x_i \in C_j} \|x_i - \mu\|_2^2.
+\end{equation}
+
+La función objetivo es convexa y diferenciable respecto a $\mu$. Su gradiente es:
+\begin{equation}
+    \nabla_{\mu} \sum_{x_i \in C_j} \|x_i - \mu\|_2^2 = \sum_{x_i \in C_j} -2(x_i - \mu).
+\end{equation}
+
+Igualando el gradiente a cero se obtiene:
+\begin{equation}
+    \sum_{x_i \in C_j} (x_i - \mu) = 0 \implies |C_j|\mu = \sum_{x_i \in C_j} x_i.
+\end{equation}
+
+Por lo tanto,
+\begin{equation}
+    \mu_j^* = \frac{1}{|C_j|} \sum_{x_i \in C_j} x_i.
+\end{equation}
+
+La matriz Hessiana es $2|C_j|I_d$, que es definida positiva para $|C_j| > 0$; en consecuencia, la función es estrictamente convexa y el punto estacionario es el único minimizador global. Así, para un cluster fijo $C_j$, la media aritmética de sus elementos es el único centro que minimiza la suma de distancias euclidianas al cuadrado \cite{lloyd1982, cormen2022}.
+
+\subsection{Complejidad computacional del problema exacto}
+
+La búsqueda exhaustiva de la partición óptima requiere evaluar todas las formas de dividir $n$ elementos en $k$ subconjuntos no vacíos. Este número corresponde a los números de Stirling de segunda especie:
+\begin{equation}
+    S(n, k) = \frac{1}{k!} \sum_{j=0}^{k} (-1)^{k-j} \binom{k}{j} j^n,
+\end{equation}
+que crece asintóticamente como $S(n, k) \approx k^n / k!$. Dado que $k^n$ crece exponencialmente con $n$, la enumeración completa de particiones es computacionalmente inviable para instancias moderadamente grandes.
+
+El problema exacto de $k$-medias euclidiano es NP-duro. Aloise, Deshpande, Hansen y Popat (2009) demostraron que el problema es NP-duro incluso para $k = 2$ cuando la dimensión $d$ es variable \cite{aloise2009}. Por otra parte, Mahajan, Nimbhorkar y Varadarajan demostraron que el problema es NP-duro en el plano euclidiano, es decir, para $d = 2$, cuando $k$ es parte de la entrada \cite{mahajan2012}. Estos resultados implican que no se espera disponer de un algoritmo polinomial exacto para el caso general, salvo que $P = NP$.
+
+Por esta razón, el algoritmo de Lloyd se emplea como una heurística de optimización alternante. El método no garantiza encontrar el óptimo global, pero produce una solución localmente estable mediante iteraciones de bajo costo polinomial. Esta decisión es coherente con la naturaleza combinatoria del problema y con la necesidad de obtener soluciones útiles en tiempo razonable para conjuntos de datos grandes \cite{cormen2022, aloise2009, mahajan2012}.
+
+\subsection{Algoritmo de Lloyd y estrategias de inicialización}
+
+El algoritmo de Lloyd \cite{lloyd1982} resuelve el problema mediante dos fases alternadas. En el paso de asignación, cada punto $x_i$ se asigna al centroide más cercano según la distancia euclidiana al cuadrado; esta etapa induce una partición de Voronoi del espacio. En el paso de actualización, cada centroide se recalcula como la media de los puntos asignados a su cluster. El proceso se repite hasta que ninguna asignación cambie.
+
+\vspace{0.3cm}
+\noindent\fcolorbox{rulegray}{codebg}{%
+\parbox{\dimexpr\textwidth-2\fboxsep-2\fboxrule\relax}{%
+\textbf{\textsc{K-Means-Lloyd}$(X, k, M)$}
+\begin{enumerate}[label=\arabic*., leftmargin=1.8em, itemsep=2pt, topsep=4pt]
+    \item \textbf{repetir}
+    \item \hspace{1.2em} \textit{// Paso de asignación}
+    \item \hspace{1.2em} \textbf{para cada} $x_i \in X$ \textbf{hacer}
+    \item \hspace{2.4em} $j^* \leftarrow \arg\min_{j \in \{1, \dots, k\}} \|x_i - \mu_j\|_2^2$
+    \item \hspace{2.4em} asignar $x_i$ al clúster $C_{j^*}$
+    \item \hspace{1.2em} \textit{// Paso de actualización}
+    \item \hspace{1.2em} \textbf{para} $j = 1$ \textbf{hasta} $k$ \textbf{hacer}
+    \item \hspace{2.4em} \textbf{si} $C_j \neq \emptyset$ \textbf{entonces}
+    \item \hspace{3.6em} $\mu_j \leftarrow \frac{1}{|C_j|} \sum_{x_i \in C_j} x_i$
+    \item \textbf{hasta que} ninguna asignación cambie
+    \item \textbf{devolver} $C = \{C_1, \dots, C_k\}$ y $M = \{\mu_1, \dots, \mu_k\}$
+\end{enumerate}
+}}
+\vspace{0.35cm}
+
+El algoritmo es sensible a la inicialización: distintas semillas pueden conducir a mínimos locales con valores de WCSS considerablemente diferentes. En la inicialización aleatoria uniforme o método de Forgy, se seleccionan $k$ puntos de $X$ con probabilidad uniforme:
+\begin{equation}
+    P(x_i) = \frac{1}{n}.
+\end{equation}
+Esta estrategia es simple, pero puede elegir centros cercanos entre sí y producir clusters mal separados.
+
+K-Means++ \cite{arthur2007} reduce esta dependencia mediante una selección secuencial probabilística. El primer centro se elige uniformemente; cada centro posterior se elige con probabilidad proporcional al cuadrado de su distancia al centro previamente seleccionado más cercano:
+\begin{equation}
+    P(x_i) = \frac{D(x_i)^2}{\sum_{x' \in X} D(x')^2}, \quad D(x_i) = \min_{\mu \in M} \|x_i - \mu\|_2.
+\end{equation}
+De este modo, los puntos alejados de los centroides ya elegidos tienen mayor probabilidad de convertirse en el siguiente centro. Arthur y Vassilvitskii demostraron que K-Means++ produce una solución $O(\log k)$-competitiva respecto al óptimo global antes de ejecutar Lloyd \cite{arthur2007}.
+
+\vspace{0.3cm}
+\noindent\fcolorbox{rulegray}{codebg}{%
+\parbox{\dimexpr\textwidth-2\fboxsep-2\fboxrule\relax}{%
+\textbf{\textsc{K-Means-Plus-Plus}$(X, k)$}
+\begin{enumerate}[label=\arabic*., leftmargin=1.8em, itemsep=2pt, topsep=4pt]
+    \item elegir uniformemente al azar un punto $x \in X$
+    \item $M \leftarrow \{x\}$
+    \item \textbf{para} $j = 2$ \textbf{hasta} $k$ \textbf{hacer}
+    \item \hspace{1.2em} \textbf{para cada} $x_i \in X$ \textbf{hacer}
+    \item \hspace{2.4em} $D(x_i)^2 \leftarrow \min_{\mu \in M} \|x_i - \mu\|_2^2$
+    \item \hspace{1.2em} elegir $x^*$ con probabilidad $P(x_i) = \dfrac{D(x_i)^2}{\sum_{x' \in X} D(x')^2}$
+    \item \hspace{1.2em} $M \leftarrow M \cup \{x^*\}$
+    \item \textbf{devolver} $M$
+\end{enumerate}
+}}
+\vspace{0.35cm}
+
+\subsection{Demostración formal de convergencia finita}
+
+Sea $J(C, M)$ la función objetivo:
+\begin{equation}
+    J(C, M) = \sum_{j=1}^{k} \sum_{x_i \in C_j} \|x_i - \mu_j\|_2^2.
+\end{equation}
+
+En el paso de asignación, cada punto $x_i$ se reasigna al centroide más cercano. Si $x_i$ permanece en su cluster, su contribución no cambia; si cambia de cluster, su nueva contribución es menor o igual que la anterior, pues se selecciona el centro que minimiza la distancia cuadrática. Por tanto:
+\begin{equation}
+    J(C', M) \leq J(C, M).
+\end{equation}
+
+En el paso de actualización, cada centroide $\mu_j$ se reemplaza por la media de los puntos de $C_j$. Como la media es el único minimizador de la suma de distancias cuadráticas dentro de un cluster fijo, se cumple:
+\begin{equation}
+    J(C, M') \leq J(C, M).
+\end{equation}
+
+En consecuencia, tras una iteración completa de asignación y actualización:
+\begin{equation}
+    J_{t+1} \leq J_t.
+\end{equation}
+
+La función objetivo es monótonamente no creciente y está acotada inferiormente por $0$, ya que las distancias al cuadrado son no negativas. Además, existen a lo más $k^n$ asignaciones posibles de $n$ puntos a $k$ clusters. Si la inercia permanece constante entre dos iteraciones, las asignaciones no cambian y el algoritmo termina. Por lo tanto, Lloyd no puede ciclar indefinidamente y converge en tiempo finito a un mínimo local \cite{lloyd1982, cormen2022}.
+
+No obstante, la convergencia a un mínimo local no garantiza optimalidad global. Arthur y Vassilvitskii (2006) demostraron que el número de iteraciones de $k$-medias puede ser superpolinomial en el peor caso, con una cota inferior de $2^{\Omega(\sqrt{n})}$ iteraciones \cite{arthur2006}. Sin embargo, bajo análisis suavizado (\textit{smoothed analysis}), el tiempo de ejecución es polinomial, con una cota del orden de $\operatorname{poly}(n^k, \sigma^{-1})$, donde $\sigma$ es la desviación estándar de una perturbación gaussiana de los datos \cite{arthur2006, arthur2008}.
+
+\subsection{Análisis de complejidad asintótica}
+
+Sea $n$ el número de puntos, $d$ la dimensión, $k$ el número de clusters y $t$ el número de iteraciones ejecutadas por Lloyd.
+
+\begin{table}[h!]
+\centering
+\small
+\begin{tabular}{p{4.6cm} c p{7.2cm}}
+\toprule
+\textbf{Componente} & \textbf{Complejidad temporal} & \textbf{Justificación} \\
+\midrule
+Inicialización aleatoria uniforme & $\Theta(kd)$ & Se seleccionan $k$ centroides de dimensión $d$ \\
+Inicialización K-Means++ & $\Theta(knd)$ & En cada una de las $k$ selecciones se calculan distancias de $n$ puntos a los centroides previos \\
+Paso de asignación por iteración & $\Theta(knd)$ & Cada uno de los $n$ puntos se compara con $k$ centroides en $d$ dimensiones \\
+Paso de actualización por iteración & $\Theta(nd)$ & Se recalculan las coordenadas de los centroides \\
+Lloyd por $t$ iteraciones & $O(tknd)$ & El paso de asignación domina el costo \\
+K-Means++ más Lloyd & $O((t+1)knd)$ & Se suma la inicialización y las $t$ iteraciones \\
+\bottomrule
+\end{tabular}
+\caption{Desglose de complejidad temporal asintótica del algoritmo K-Means.}
+\end{table}
+
+En una implementación vectorizada que almacena la matriz completa de distancias, el cálculo de las distancias entre $n$ puntos y $k$ centroides requiere $\Theta(knd)$ operaciones. La actualización de los centroides requiere recorrer nuevamente los $n$ puntos y sus $d$ coordenadas, con costo $\Theta(nd)$. Por tanto, para $t$ iteraciones, la complejidad temporal total es:
+\begin{equation}
+    O(tknd).
+\end{equation}
+
+Si se emplea K-Means++, la inicialización añade $O(knd)$, de modo que el costo total es:
+\begin{equation}
+    O((t+1)knd).
+\end{equation}
+
+Respecto al espacio, el almacenamiento de los datos requiere $\Theta(nd)$, los centroides requieren $\Theta(kd)$ y la matriz de distancias requiere $\Theta(nk)$. En consecuencia:
+\begin{equation}
+    \Theta(nd) + \Theta(kd) + \Theta(nk) = O(n(d + k)).
+\end{equation}
+
+Si no se almacena la matriz completa de distancias, sino que se calculan las distancias punto a punto y se conserva únicamente la asignación y la distancia mínima de cada punto, el requerimiento espacial se reduce a:
+\begin{equation}
+    O((n + k)d).
+\end{equation}
+Esta variante es preferible cuando $k$ es grande, pues evita almacenar $nk$ valores de distancia simultáneamente.
+
+\subsection{Criterios teóricos de evaluación y selección de $k$}
+
+La inercia o WCSS se define como:
+\begin{equation}
+    \operatorname{WCSS}(C) = \sum_{j=1}^{k} \sum_{x_i \in C_j} \|x_i - \mu_j\|_2^2.
+\end{equation}
+Un valor menor indica que los puntos están más cercanos a sus respectivos centroides. Sin embargo, la inercia disminuye monótonamente al aumentar $k$, por lo que no debe utilizarse de forma aislada para seleccionar el número óptimo de clusters.
+
+El método del codo (\textit{Elbow Method}) evalúa el WCSS para distintos valores de $k$ y selecciona el punto en el que la reducción marginal de la inercia deja de ser significativa. Formalmente, se analiza la disminución relativa:
+\begin{equation}
+    \Delta(k) = \operatorname{WCSS}(k - 1) - \operatorname{WCSS}(k).
+\end{equation}
+El valor de $k$ elegido es aquel en el que $\Delta(k)$ comienza a decrecer de forma pronunciada, formando un ``codo'' en la curva de inercia frente a $k$. Este criterio es heurístico, pero útil para balancear compactación intra-cluster y parsimonia del modelo.
+
+El coeficiente de silueta evalúa simultáneamente la cohesión y la separación de los clusters. Para un punto $x_i$ perteneciente al cluster $C_j$, sea $a(i)$ la distancia media de $x_i$ a los demás puntos de $C_j$, y sea $b(i)$ la distancia media mínima de $x_i$ a los puntos del cluster vecino más cercano \cite{rousseeuw1987}:
+\begin{equation}
+    s(i) = \frac{b(i) - a(i)}{\max\{a(i), b(i)\}}.
+\end{equation}
+
+El coeficiente $s(i)$ pertenece al intervalo $[-1, 1]$. Valores cercanos a $1$ indican que el punto está bien asignado a su cluster y alejado de los demás; valores cercanos a $0$ indican que el punto se encuentra en la frontera entre dos clusters; valores negativos sugieren una posible asignación incorrecta. El coeficiente promedio:
+\begin{equation}
+    \bar{s} = \frac{1}{n} \sum_{i=1}^{n} s(i)
+\end{equation}
+permite comparar configuraciones con distintos valores de $k$, favoreciendo aquella que maximice la cohesión interna y la separación externa \cite{rousseeuw1987}.
+
+\vspace{0.4cm}
+% --- SECCIÓN 2: IMPLEMENTACIÓN ---
+\section{Diseño e Implementación Algorítmica}
+
+La implementación del algoritmo se desarrolló de manera modular en Python utilizando únicamente operaciones matriciales sobre arreglos numéricos (\texttt{NumPy}), sin recurrir a librerías externas de aprendizaje automático para el núcleo del algoritmo. La arquitectura se organizó en tres etapas desacopladas dentro del módulo principal (\texttt{kmeans\_core.py}):
+
+\begin{itemize}
+    \item \textbf{Inicialización de centroides (\texttt{\_initialize\_centroids}):} Implementa tanto la selección aleatoria uniforme sin reemplazo (\texttt{random}) en tiempo $\Theta(kd)$ como la selección secuencial probabilística \texttt{kmeans++} en tiempo $\Theta(knd)$, manteniendo el vector de distancias cuadráticas mínimas actualizado en cada paso.
+    \item \textbf{Asignación vectorizada (\texttt{\_assign\_clusters}):} Calcula la matriz de distancias euclidianas al cuadrado de dimensión $n \times k$ mediante transmisión matricial (\textit{broadcasting}), determinando en $\Theta(knd)$ tanto las etiquetas de asignación como la inercia total (WCSS).
+    \item \textbf{Actualización y criterio de parada (\texttt{\_update\_centroids} y \texttt{kmeans}):} Recalcula los centroides como la media aritmética de cada partición en $\Theta(nd)$ —reubicando cualquier cluster vacío en un punto aleatorio del conjunto de datos para evitar divisiones por cero— y detiene las iteraciones cuando la norma de Frobenius del desplazamiento de los centroides es menor o igual a la tolerancia $\text{tol} = 10^{-6}$ o se alcanza el límite máximo de iteraciones.
+\end{itemize}
+
+% --- SECCIONES RESERVADAS PARA LOS COMPAÑEROS ---
+\section{Diseño Experimental y Análisis de Resultados}
+\textit{[Espacio reservado para Integrante 2: descripción de los conjuntos de datos numéricos, tablas comparativas variando $k$ y semillas iniciales, y análisis de estabilidad y convergencia.]}
+
+\section{Visualización, Validación y Conclusiones}
+\textit{[Espacio reservado para Integrante 3: gráficas de agrupamientos, curva del codo, validación frente a implementación de referencia y conclusiones generales.]}
+
+% --- REFERENCIAS BIBLIOGRÁFICAS ---
+\begin{thebibliography}{9}
+
+\bibitem{aloise2009}
+Aloise, D., Deshpande, A., Hansen, P., \& Popat, P. (2009). NP-hardness of Euclidean sum-of-squares clustering. \textit{Machine Learning}, 75(2), 245--248.
+
+\bibitem{arthur2006}
+Arthur, D., \& Vassilvitskii, S. (2006). How slow is the $k$-means method? \textit{Proceedings of the 22nd Annual Symposium on Computational Geometry (SoCG)}, 144--153.
+
+\bibitem{arthur2007}
+Arthur, D., \& Vassilvitskii, S. (2007). $k$-means++: The advantages of careful seeding. \textit{Proceedings of the Eighteenth Annual ACM-SIAM Symposium on Discrete Algorithms (SODA)}, 1027--1035.
+
+\bibitem{arthur2008}
+Arthur, D., \& Vassilvitskii, S. (2008). Smoothed analysis of the $k$-means method. \textit{Journal of the ACM}, 58(5), 1--19.
+
+\bibitem{cormen2022}
+Cormen, T. H., Leiserson, C. E., Rivest, R. L., \& Stein, C. (2022). \textit{Introduction to Algorithms} (4.ª ed.). MIT Press. Sección 33.1, ``Clustering''.
+
+\bibitem{lloyd1982}
+Lloyd, S. P. (1982). Least squares quantization in PCM. \textit{IEEE Transactions on Information Theory}, 28(2), 129--137.
+
+\bibitem{mahajan2012}
+Mahajan, M., Nimbhorkar, P., \& Varadarajan, K. (2012). The planar $k$-means problem is NP-hard. \textit{Theoretical Computer Science}, 442, 13--21.
+
+\bibitem{rousseeuw1987}
+Rousseeuw, P. J. (1987). Silhouettes: A graphical aid to the interpretation and validation of cluster analysis. \textit{Journal of Computational and Applied Mathematics}, 20, 53--65.
+
+\end{thebibliography}
+
+\end{document}
