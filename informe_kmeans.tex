@@ -1,4 +1,4 @@
-\documentclass[11pt,letterpaper]{article}
+\documentclass[10pt,letterpaper]{article}
 
 \usepackage[utf8]{inputenc}
 \usepackage[T1]{fontenc}
@@ -11,36 +11,37 @@
 \usepackage{enumitem}
 \usepackage{listings}
 \usepackage{xcolor}
+\usepackage{titlesec}
 \usepackage{pdfpages}
 \usepackage{graphicx}
 
-\geometry{margin=2.5cm}
+\geometry{margin=1.8cm}
+\setlist{nosep, leftmargin=1.5em}
+\titlespacing*{\section}{0pt}{10pt}{4pt}
+\titlespacing*{\subsection}{0pt}{7pt}{3pt}
+
+\setlength{\abovedisplayskip}{5pt}
+\setlength{\belowdisplayskip}{5pt}
+\setlength{\abovedisplayshortskip}{3pt}
+\setlength{\belowdisplayshortskip}{3pt}
 
 \lstset{
-    basicstyle=\ttfamily\small,
+    basicstyle=\ttfamily\footnotesize,
     breaklines=true,
-    frame=single,
-    backgroundcolor=\color{gray!8},
+    frame=lines,
+    backgroundcolor=\color{gray!5},
     keywordstyle=\bfseries\color{blue!70!black},
     commentstyle=\itshape\color{green!45!black},
     numbers=left,
     numberstyle=\tiny\color{gray},
     xleftmargin=1.5em,
-    framexleftmargin=1.2em
+    aboveskip=4pt,
+    belowskip=4pt
 }
 
-\title{
-    \textbf{Informe Proyecto Final: Algoritmos y Complejidad} \\
-    \large Proyecto \#8: Clustering con K-Means (Cormen et al., Secci\'on 33.1)
-}
-
-\author{
-    Daniela Amaya \and
-    Anthony Amaya \and
-    Alvaro Useche Arias
-}
-
-\date{Departamento de Ingenier\'ia de Sistemas y Computaci\'on \\ Universidad del Norte \\ 2026}
+\title{\vspace{-1.2cm}\textbf{Informe Proyecto Final: Algoritmos y Complejidad} \\ \large Proyecto \#8: Clustering con K-Means (Cormen et al., Secci\'on 33.1)}
+\author{Daniela Amaya \and Anthony Amaya \and Alvaro Useche Arias}
+\date{\small Departamento de Ingenier\'ia de Sistemas y Computaci\'on — Universidad del Norte — 2026\vspace{-0.5cm}}
 
 \begin{document}
 
@@ -95,12 +96,10 @@ K-MEANS-LLOYD(X, k, M)
       para cada $x_i$ en $X$ hacer
           $j^* \leftarrow \arg\min_{j \in \{1,\dots,k\}} \|x_i - \mu_j\|_2^2$
           asignar $x_i$ al cluster $C_{j^*}$
-
       // Paso de actualizacion
       para $j = 1$ hasta $k$ hacer
           si $C_j \neq \emptyset$ entonces
               $\mu_j \leftarrow (1/|C_j|) \sum_{x_i \in C_j} x_i$
-
   hasta que ninguna asignacion cambie
   devolver $C = \{C_1, \dots, C_k\}$ y $M = \{\mu_1, \dots, \mu_k\}$
 \end{lstlisting}
@@ -124,10 +123,7 @@ K-MEANS-PLUS-PLUS(X, k)
   para $j = 2$ hasta $k$ hacer
       para cada $x_i$ en $X$ hacer
           $D(x_i) \leftarrow \min_{\mu \in M} \|x_i - \mu\|_2^2$
-
-      elegir $x^*$ con probabilidad
-      $P(x_i) = D(x_i)^2 / \sum_{x' \in X} D(x')^2$
-
+      elegir $x^*$ con probabilidad $P(x_i) = D(x_i)^2 / \sum_{x' \in X} D(x')^2$
       $M \leftarrow M \cup \{x^*\}$
   devolver $M$
 \end{lstlisting}
@@ -160,6 +156,7 @@ Sea $n$ el n\'umero de puntos, $d$ la dimensi\'on, $k$ el n\'umero de clusters y
 
 \begin{table}[h!]
 \centering
+\small
 \caption{Desglose de complejidad temporal por componente del algoritmo}
 \begin{tabularx}{\textwidth}{l l X}
 \toprule
@@ -217,10 +214,6 @@ El coeficiente $s(i)$ pertenece al intervalo $[-1, 1]$. Valores cercanos a $1$ i
 \end{equation}
 permite comparar configuraciones con distintos valores de $k$, favoreciendo aquella que maximice la cohesi\'on interna y la separaci\'on externa [Rousseeuw, 1987].
 
-% =========================================================================
-% SECCIONES PARA COMPLETAR POR LOS INTEGRANTES 2 Y 3
-% =========================================================================
-
 \section{Implementaci\'on del algoritmo}
 
 El algoritmo K-Means fue implementado desde cero en Python mediante una arquitectura modular contenida en el archivo \texttt{kmeans\_core.py}, apoy\'andose \'unicamente en la biblioteca \texttt{NumPy} para operaciones matriciales y sin emplear librer\'ias externas de aprendizaje autom\'atico. El dise\~no se estructur\'o en cuatro funciones principales:
@@ -231,22 +224,21 @@ El algoritmo K-Means fue implementado desde cero en Python mediante una arquitec
     \item \textbf{Paso de actualizaci\'on (\texttt{\_update\_centroids}):} Recalcula cada centroide $\mu_j$ como la media aritm\'etica de los puntos asignados al cluster $C_j$. Para garantizar estabilidad num\'erica frente a particiones degeneradas, si alg\'un cluster queda vac\'io ($|C_j| = 0$) durante una iteraci\'on, su centroide se reinicializa autom\'aticamente con un punto seleccionado al azar del conjunto de datos.
     \item \textbf{Ciclo principal y convergencia (\texttt{kmeans}):} Ejecuta de manera iterativa las fases de asignaci\'on y actualizaci\'on hasta alcanzar un l\'imite m\'aximo de iteraciones (\texttt{max\_iter}) o hasta que la norma de Frobenius del desplazamiento total entre centroides consecutivos ($\|\mathbf{M}^{(t)} - \mathbf{M}^{(t-1)}\|_F$) sea menor o igual a una tolerancia predefinida ($\text{tol} = 10^{-6}$). Adicionalmente, la funci\'on registra el historial de centroides e inercia por iteraci\'on y recibe una semilla (\texttt{seed}) para asegurar la reproducibilidad de los experimentos.
 \end{enumerate}
+
+% =========================================================================
+% SECCIONES PARA COMPLETAR POR LOS INTEGRANTES 2 Y 3
+% =========================================================================
+
 \section{An\'alisis experimental y comparativo}
-% TODO (Integrante 2): Insertar aqui el diseno experimental (datasets sinteticos y reales),
-% tablas comparativas variando k e inicializaciones (random vs. kmeans++), y analisis
-% de estabilidad, convergencia y tiempo de ejecucion.
-% Si desea anexar un PDF externo directamente, descomente la siguiente linea:
-% \includepdf[pages=-]{parte_integrante2.pdf}
+% TODO (Integrante 2): Insertar diseno experimental, tablas comparativas variando k
+% e inicializaciones (random vs. kmeans++), y analisis de estabilidad y convergencia.
 
 \section{Visualizaci\'on de resultados, validaci\'on y conclusiones}
-% TODO (Integrante 3): Insertar aqui las graficas (curva del codo, silueta, dispersion
-% de clusters, escalabilidad O(tknd)), comparacion de validacion frente a libreria
-% estandar (scikit-learn) y conclusiones finales del proyecto.
-% Si desea anexar un PDF externo directamente, descomente la siguiente linea:
-% \includepdf[pages=-]{parte_integrante3.pdf}
+% TODO (Integrante 3): Insertar graficas (codo, silueta, dispersion, escalabilidad O(tknd)),
+% validacion frente a libreria estandar (scikit-learn) y conclusiones finales.
 
 \begin{thebibliography}{9}
-
+\small
 \bibitem{aloise2009}
 Aloise, D., Deshpande, A., Hansen, P., \& Popat, P. (2009). NP-hardness of Euclidean sum-of-squares clustering. \textit{Machine Learning}, 75(2), 245--248.
 
