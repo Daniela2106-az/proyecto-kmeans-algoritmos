@@ -55,7 +55,7 @@ El agrupamiento (\textit{clustering}) particional no supervisado consiste en div
 \begin{equation}
 \arg\min_{C} \sum_{j=1}^{k} \sum_{x_i \in C_j} \|x_i - \mu_j\|_2^2, \quad \mu_j \in \mathbb{R}^d,
 \end{equation}
-donde $\|\cdot\|_2$ es la norma euclidiana y $\mu_j$ representa el centro del grupo $C_j$. Para una partici\'on fija, el valor \'optimo de cada centro se obtiene resolviendo el siguiente problema de minimizaci\'on:
+donde $\Vert{}\cdot\Vert{}_2$ es la norma euclidiana y $\mu_j$ representa el centro del grupo $C_j$. Para una partici\'on fija, el valor \'optimo de cada centro se obtiene resolviendo el siguiente problema de minimizaci\'on:
 \begin{equation}
 \mu_j^* = \arg\min_{\mu \in \mathbb{R}^d} \sum_{x_i \in C_j} \|x_i - \mu\|_2^2.
 \end{equation}
@@ -71,7 +71,7 @@ Por lo tanto,
 \begin{equation}
 \mu_j^* = \frac{1}{|C_j|} \sum_{x_i \in C_j} x_i.
 \end{equation}
-La matriz Hessiana es $2|C_j|I_d$, que es definida positiva para $|C_j| > 0$; en consecuencia, la funci\'on es estrictamente convexa y el punto estacionario es el \'unico minimizador global. As\'i, para un cluster fijo $C_j$, la media aritm\'etica de sus elementos es el \'unico centro que minimiza la suma de distancias euclidianas al cuadrado [Lloyd, 1982; Cormen et al., 2022].
+La matriz Hessiana es $2\vert{}C_j\vert{}I_d$, que es definida positiva para $\vert{}C_j\vert{} > 0$; en consecuencia, la funci\'on es estrictamente convexa y el punto estacionario es el \'unico minimizador global. As\'i, para un cluster fijo $C_j$, la media aritm\'etica de sus elementos es el \'unico centro que minimiza la suma de distancias euclidianas al cuadrado [Lloyd, 1982; Cormen et al., 2022].
 
 \subsection{Complejidad computacional del problema exacto}
 
@@ -94,12 +94,12 @@ K-MEANS-LLOYD(X, k, M)
   repetir
       // Paso de asignacion
       para cada $x_i$ en $X$ hacer
-          $j^* \leftarrow \arg\min_{j \in \{1,\dots,k\}} \|x_i - \mu_j\|_2^2$
+          $j^* \leftarrow \arg\min_{j \in \{1,\dots,k\}} \Vert{}x_i - \mu_j\Vert{}_2^2$
           asignar $x_i$ al cluster $C_{j^*}$
       // Paso de actualizacion
       para $j = 1$ hasta $k$ hacer
           si $C_j \neq \emptyset$ entonces
-              $\mu_j \leftarrow (1/|C_j|) \sum_{x_i \in C_j} x_i$
+              $\mu_j \leftarrow (1/\vert{}C_j\vert{}) \sum_{x_i \in C_j} x_i$
   hasta que ninguna asignacion cambie
   devolver $C = \{C_1, \dots, C_k\}$ y $M = \{\mu_1, \dots, \mu_k\}$
 \end{lstlisting}
@@ -122,7 +122,7 @@ K-MEANS-PLUS-PLUS(X, k)
   $M \leftarrow \{x\}$
   para $j = 2$ hasta $k$ hacer
       para cada $x_i$ en $X$ hacer
-          $D(x_i) \leftarrow \min_{\mu \in M} \|x_i - \mu\|_2^2$
+          $D(x_i) \leftarrow \min_{\mu \in M} \Vert{}x_i - \mu\Vert{}_2^2$
       elegir $x^*$ con probabilidad $P(x_i) = D(x_i)^2 / \sum_{x' \in X} D(x')^2$
       $M \leftarrow M \cup \{x^*\}$
   devolver $M$
@@ -208,125 +208,4 @@ El coeficiente de silueta eval\'ua simult\'aneamente la cohesi\'on y la separaci
 \begin{equation}
 s(i) = \frac{b(i) - a(i)}{\max\{a(i), b(i)\}}.
 \end{equation}
-El coeficiente $s(i)$ pertenece al intervalo $[-1, 1]$. Valores cercanos a $1$ indican que el punto est\'a bien asignado a su cluster y alejado de los dem\'as; valores cercanos a $0$ indican que el punto se encuentra en la frontera entre dos clusters; valores negativos sugieren una posible asignaci\'on incorrecta. El coeficiente promedio:
-\begin{equation}
-\bar{s} = \frac{1}{n} \sum_{i=1}^{n} s(i)
-\end{equation}
-permite comparar configuraciones con distintos valores de $k$, favoreciendo aquella que maximice la cohesi\'on interna y la separaci\'on externa [Rousseeuw, 1987].
-
-\section{Implementaci\'on del algoritmo}
-
-El algoritmo K-Means fue implementado desde cero en Python mediante una arquitectura modular contenida en el archivo \texttt{kmeans\_core.py}, apoy\'andose \'unicamente en la biblioteca \texttt{NumPy} para operaciones matriciales y sin emplear librer\'ias externas de aprendizaje autom\'atico. El dise\~no se estructur\'o en cuatro funciones principales:
-
-\begin{enumerate}
-    \item \textbf{Inicializaci\'on de centroides (\texttt{\_initialize\_centroids}):} Implementa tanto la selecci\'on aleatoria uniforme (\texttt{random}) mediante muestreo sin reemplazo como la estrategia secuencial probabil\'istica \texttt{kmeans++}, calculando en cada paso el vector de distancias m\'inimas cuadr\'aticas $D(x_i)^2$ hacia los centroides ya elegidos y muestreando el siguiente centro con probabilidad proporcional a dicho valor.
-    \item \textbf{Paso de asignaci\'on (\texttt{\_assign\_clusters}):} Calcula de forma vectorizada la matriz de distancias euclidianas al cuadrado de dimensi\'on $n \times k$ entre cada observaci\'on $x_i \in \mathbb{R}^d$ y los $k$ centroides actuales mediante \textit{broadcasting} matricial. A partir de esta matriz se obtiene el \'indice del centroide m\'as cercano (\texttt{np.argmin}) y la inercia acumulada (WCSS) de la iteraci\'on.
-    \item \textbf{Paso de actualizaci\'on (\texttt{\_update\_centroids}):} Recalcula cada centroide $\mu_j$ como la media aritm\'etica de los puntos asignados al cluster $C_j$. Para garantizar estabilidad num\'erica frente a particiones degeneradas, si alg\'un cluster queda vac\'io ($|C_j| = 0$) durante una iteraci\'on, su centroide se reinicializa autom\'aticamente con un punto seleccionado al azar del conjunto de datos.
-    \item \textbf{Ciclo principal y convergencia (\texttt{kmeans}):} Ejecuta de manera iterativa las fases de asignaci\'on y actualizaci\'on hasta alcanzar un l\'imite m\'aximo de iteraciones (\texttt{max\_iter}) o hasta que la norma de Frobenius del desplazamiento total entre centroides consecutivos ($\|\mathbf{M}^{(t)} - \mathbf{M}^{(t-1)}\|_F$) sea menor o igual a una tolerancia predefinida ($\text{tol} = 10^{-6}$). Adicionalmente, la funci\'on registra el historial de centroides e inercia por iteraci\'on y recibe una semilla (\texttt{seed}) para asegurar la reproducibilidad de los experimentos.
-\end{enumerate}
-
-% =========================================================================
-% SECCIÓN INTEGRANTE 2: ANÁLISIS EXPERIMENTAL Y COMPARATIVO
-% =========================================================================
-
-\section{An\'alisis experimental y comparativo}
-
-\subsection{Dise\~no experimental y conjuntos de datos}
-Para evaluar el desempe\~no del algoritmo bajo distintos reg\'imenes geom\'etricos y dimensionales, se emplearon tres conjuntos de datos num\'ericos:
-\begin{itemize}
-    \item \textbf{Sint\'etico Separado ($n=600, d=2, k^*=4$):} Cuatro distribuciones gaussianas isotr\'opicas con desviaci\'on est\'andar $\sigma = 0.65$, dise\~nado para verificar convergencia hacia el \'optimo global.
-    \item \textbf{Sint\'etico Solapado ($n=600, d=2, k^*=4$):} Cuatro distribuciones gaussianas con $\sigma = 1.85$ y fronteras difusas, orientado a evaluar sensibilidad a m\'inimos locales.
-    \item \textbf{Dataset Real Iris ($n=150, d=4, k^*=3$):} Conjunto cl\'asico multivariado estandarizado ($\mu=0, \sigma=1$ por atributo) para validar comportamiento en datos reales.
-\end{itemize}
-
-\subsection{Sensibilidad al par\'ametro $k$}
-Se ejecut\'o el algoritmo variando $k \in \{2, \dots, 8\}$ con inicializaci\'on \texttt{kmeans++}. En todos los conjuntos la inercia (WCSS) decreci\'o mon\'otonamente al incrementar $k$, observ\'andose un punto de inflexi\'on pronunciado (``codo'') en $k=4$ para los conjuntos sint\'eticos y en $k=3$ para Iris, coincidiendo con el m\'aximo del coeficiente promedio de silueta $\bar{s}$ (Tabla~\ref{tab:k_var}).
-
-% TODO (Integrante 2): Llenar con los valores de results/exp1_k_variation.csv
-\begin{table}[h!]
-\centering
-\small
-\caption{Inercia (WCSS) y coeficiente de silueta $\bar{s}$ al variar $k$}
-\label{tab:k_var}
-\begin{tabular}{c cc cc cc}
-\toprule
-& \multicolumn{2}{c}{\textbf{Sint\'etico Separado}} & \multicolumn{2}{c}{\textbf{Sint\'etico Solapado}} & \multicolumn{2}{c}{\textbf{Real Iris}} \\
-\cmidrule(lr){2-3} \cmidrule(lr){4-5} \cmidrule(lr){6-7}
-$k$ & WCSS & $\bar{s}$ & WCSS & $\bar{s}$ & WCSS & $\bar{s}$ \\
-\midrule
-2 & [...] & [...] & [...] & [...] & [...] & [...] \\
-3 & [...] & [...] & [...] & [...] & [...] & [...] \\
-4 & [...] & [...] & [...] & [...] & [...] & [...] \\
-5 & [...] & [...] & [...] & [...] & [...] & [...] \\
-6 & [...] & [...] & [...] & [...] & [...] & [...] \\
-7 & [...] & [...] & [...] & [...] & [...] & [...] \\
-8 & [...] & [...] & [...] & [...] & [...] & [...] \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-\subsection{Estabilidad y convergencia seg\'un condiciones iniciales}
-Se ejecutaron 30 corridas independientes (\texttt{seed} $\in [0, 29]$) fijando $k = k^*$ para comparar la inicializaci\'on aleatoria uniforme (\texttt{random}) frente a \texttt{kmeans++} (Tabla~\ref{tab:init_stab}).
-
-% TODO (Integrante 2): Llenar con los valores de results/exp2_init_summary.csv
-\begin{table}[h!]
-\centering
-\small
-\caption{Comparaci\'on de estabilidad y convergencia sobre 30 semillas}
-\label{tab:init_stab}
-\begin{tabularx}{\textwidth}{l l c c c c}
-\toprule
-\textbf{Dataset} & \textbf{M\'etodo} & \textbf{WCSS ($\mu \pm \sigma$)} & \textbf{WCSS [M\'in, M\'ax]} & \textbf{Silueta $\bar{s}$} & \textbf{Iteraciones} \\
-\midrule
-Sint\'etico Separado & \texttt{random}   & [...] $\pm$ [...] & [[...], [...]] & [...] & [...] \\
-Sint\'etico Separado & \texttt{kmeans++} & [...] $\pm$ [...] & [[...], [...]] & [...] & [...] \\
-Sint\'etico Solapado & \texttt{random}   & [...] $\pm$ [...] & [[...], [...]] & [...] & [...] \\
-Sint\'etico Solapado & \texttt{kmeans++} & [...] $\pm$ [...] & [[...], [...]] & [...] & [...] \\
-Real Iris            & \texttt{random}   & [...] $\pm$ [...] & [[...], [...]] & [...] & [...] \\
-Real Iris            & \texttt{kmeans++} & [...] $\pm$ [...] & [[...], [...]] & [...] & [...] \\
-\bottomrule
-\end{tabularx}
-\end{table}
-
-\noindent \textbf{Hallazgos clave:} La inicializaci\'on \texttt{random} exhibe una desviaci\'on est\'andar significativamente mayor en WCSS debido a que, en ciertas semillas, selecciona dos o m\'as centroides iniciales dentro del mismo grupo real, quedando atrapada en m\'inimos locales sub\'optimos. Por el contrario, \texttt{kmeans++} reduce dr\'asticamente la varianza entre ejecuciones y disminuye el n\'umero promedio de iteraciones necesarias para alcanzar la tolerancia de convergencia ($\text{tol} = 10^{-6}$).
-
-\subsection{An\'alisis emp\'irico de escalabilidad}
-Al escalar el tama\~no de muestra $n \in [500, 20000]$ manteniendo constantes $k=5$ y $d=4$, el tiempo promedio por iteraci\'on crece de forma estrictamente lineal respecto a $n$ (pasando de [...] ms para $n=500$ a [...] ms para $n=20000$), confirmando experimentalmente la cota asint\'otica te\'orica $\Theta(knd)$ por iteraci\'on y $O(tknd)$ total derivada en la Secci\'on 1.
-
-% =========================================================================
-% SECCIÓN PARA COMPLETAR POR EL INTEGRANTE 3
-% =========================================================================
-
-\section{Visualizaci\'on de resultados, validaci\'on y conclusiones}
-% TODO (Integrante 3): Insertar graficas (codo, silueta, dispersion, escalabilidad O(tknd)),
-% validacion frente a libreria estandar (scikit-learn) y conclusiones finales.
-
-\begin{thebibliography}{9}
-\small
-\bibitem{aloise2009}
-Aloise, D., Deshpande, A., Hansen, P., \& Popat, P. (2009). NP-hardness of Euclidean sum-of-squares clustering. \textit{Machine Learning}, 75(2), 245--248.
-
-\bibitem{arthur2006}
-Arthur, D., \& Vassilvitskii, S. (2006). How slow is the $k$-means method? \textit{Proceedings of the 22nd Annual Symposium on Computational Geometry (SoCG)}, 144--153.
-
-\bibitem{arthur2007}
-Arthur, D., \& Vassilvitskii, S. (2007). $k$-means++: The advantages of careful seeding. \textit{Proceedings of the Eighteenth Annual ACM-SIAM Symposium on Discrete Algorithms (SODA)}, 1027--1035.
-
-\bibitem{arthur2008}
-Arthur, D., \& Vassilvitskii, S. (2008). Worst-case and smoothed analysis of the ICP algorithm, with an application to the $k$-means method. \textit{SIAM Journal on Computing}, 39(2), 766--782.
-
-\bibitem{cormen2022}
-Cormen, T. H., Leiserson, C. E., Rivest, R. L., \& Stein, C. (2022). \textit{Introduction to Algorithms} (4.\textsuperscript{a} ed.). MIT Press. Secci\'on 33.1, ``Clustering''.
-
-\bibitem{lloyd1982}
-Lloyd, S. P. (1982). Least squares quantization in PCM. \textit{IEEE Transactions on Information Theory}, 28(2), 129--137.
-
-\bibitem{mahajan2012}
-Mahajan, M., Nimbhorkar, P., \& Varadarajan, K. (2012). The planar $k$-means problem is NP-hard. \textit{Theoretical Computer Science}, 442, 13--21.
-
-\bibitem{rousseeuw1987}
-Rousseeuw, P. J. (1987). Silhouettes: A graphical aid to the interpretation and validation of cluster analysis. \textit{Journal of Computational and Applied Mathematics}, 20, 53--65.
-
-\end{thebibliography}
-
-\end{document}
+El coeficiente $s(i)$ pertenece al intervalo $[-1, 1]$. Valores cercanos a $1$ indican que el punto est
