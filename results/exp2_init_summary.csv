@@ -1,0 +1,7 @@
+dataset,init,wcss_mean,wcss_std,wcss_min,wcss_max,sil_mean,iter_mean,time_ms_mean
+Real_Iris,kmeans++,147.252,18.1251,139.8205,197.3372,0.4625,6.6667,3.0478
+Real_Iris,random,145.6539,16.1469,139.8205,197.4714,0.4618,6.8667,1.0694
+Sintetico_Separado,kmeans++,694.5015,773.3111,491.2992,3539.524,0.8483,2.3,1.0561
+Sintetico_Separado,random,2711.9971,4170.5456,491.2992,17972.0203,0.7552,6.3667,8.5134
+Sintetico_Solapado,kmeans++,4134.5012,760.7098,3885.1958,6385.7991,0.6043,9.1333,2.4005
+Sintetico_Solapado,random,4554.1657,1128.4493,3885.1958,6475.6465,0.5922,9.9667,2.5606
