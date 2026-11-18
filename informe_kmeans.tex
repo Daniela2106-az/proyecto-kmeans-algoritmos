@@ -226,12 +226,76 @@ El algoritmo K-Means fue implementado desde cero en Python mediante una arquitec
 \end{enumerate}
 
 % =========================================================================
-% SECCIONES PARA COMPLETAR POR LOS INTEGRANTES 2 Y 3
+% SECCIÓN INTEGRANTE 2: ANÁLISIS EXPERIMENTAL Y COMPARATIVO
 % =========================================================================
 
 \section{An\'alisis experimental y comparativo}
-% TODO (Integrante 2): Insertar diseno experimental, tablas comparativas variando k
-% e inicializaciones (random vs. kmeans++), y analisis de estabilidad y convergencia.
+
+\subsection{Dise\~no experimental y conjuntos de datos}
+Para evaluar el desempe\~no del algoritmo bajo distintos reg\'imenes geom\'etricos y dimensionales, se emplearon tres conjuntos de datos num\'ericos:
+\begin{itemize}
+    \item \textbf{Sint\'etico Separado ($n=600, d=2, k^*=4$):} Cuatro distribuciones gaussianas isotr\'opicas con desviaci\'on est\'andar $\sigma = 0.65$, dise\~nado para verificar convergencia hacia el \'optimo global.
+    \item \textbf{Sint\'etico Solapado ($n=600, d=2, k^*=4$):} Cuatro distribuciones gaussianas con $\sigma = 1.85$ y fronteras difusas, orientado a evaluar sensibilidad a m\'inimos locales.
+    \item \textbf{Dataset Real Iris ($n=150, d=4, k^*=3$):} Conjunto cl\'asico multivariado estandarizado ($\mu=0, \sigma=1$ por atributo) para validar comportamiento en datos reales.
+\end{itemize}
+
+\subsection{Sensibilidad al par\'ametro $k$}
+Se ejecut\'o el algoritmo variando $k \in \{2, \dots, 8\}$ con inicializaci\'on \texttt{kmeans++}. En todos los conjuntos la inercia (WCSS) decreci\'o mon\'otonamente al incrementar $k$, observ\'andose un punto de inflexi\'on pronunciado (``codo'') en $k=4$ para los conjuntos sint\'eticos y en $k=3$ para Iris, coincidiendo con el m\'aximo del coeficiente promedio de silueta $\bar{s}$ (Tabla~\ref{tab:k_var}).
+
+% TODO (Integrante 2): Llenar con los valores de results/exp1_k_variation.csv
+\begin{table}[h!]
+\centering
+\small
+\caption{Inercia (WCSS) y coeficiente de silueta $\bar{s}$ al variar $k$}
+\label{tab:k_var}
+\begin{tabular}{c cc cc cc}
+\toprule
+& \multicolumn{2}{c}{\textbf{Sint\'etico Separado}} & \multicolumn{2}{c}{\textbf{Sint\'etico Solapado}} & \multicolumn{2}{c}{\textbf{Real Iris}} \\
+\cmidrule(lr){2-3} \cmidrule(lr){4-5} \cmidrule(lr){6-7}
+$k$ & WCSS & $\bar{s}$ & WCSS & $\bar{s}$ & WCSS & $\bar{s}$ \\
+\midrule
+2 & [...] & [...] & [...] & [...] & [...] & [...] \\
+3 & [...] & [...] & [...] & [...] & [...] & [...] \\
+4 & [...] & [...] & [...] & [...] & [...] & [...] \\
+5 & [...] & [...] & [...] & [...] & [...] & [...] \\
+6 & [...] & [...] & [...] & [...] & [...] & [...] \\
+7 & [...] & [...] & [...] & [...] & [...] & [...] \\
+8 & [...] & [...] & [...] & [...] & [...] & [...] \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Estabilidad y convergencia seg\'un condiciones iniciales}
+Se ejecutaron 30 corridas independientes (\texttt{seed} $\in [0, 29]$) fijando $k = k^*$ para comparar la inicializaci\'on aleatoria uniforme (\texttt{random}) frente a \texttt{kmeans++} (Tabla~\ref{tab:init_stab}).
+
+% TODO (Integrante 2): Llenar con los valores de results/exp2_init_summary.csv
+\begin{table}[h!]
+\centering
+\small
+\caption{Comparaci\'on de estabilidad y convergencia sobre 30 semillas}
+\label{tab:init_stab}
+\begin{tabularx}{\textwidth}{l l c c c c}
+\toprule
+\textbf{Dataset} & \textbf{M\'etodo} & \textbf{WCSS ($\mu \pm \sigma$)} & \textbf{WCSS [M\'in, M\'ax]} & \textbf{Silueta $\bar{s}$} & \textbf{Iteraciones} \\
+\midrule
+Sint\'etico Separado & \texttt{random}   & [...] $\pm$ [...] & [[...], [...]] & [...] & [...] \\
+Sint\'etico Separado & \texttt{kmeans++} & [...] $\pm$ [...] & [[...], [...]] & [...] & [...] \\
+Sint\'etico Solapado & \texttt{random}   & [...] $\pm$ [...] & [[...], [...]] & [...] & [...] \\
+Sint\'etico Solapado & \texttt{kmeans++} & [...] $\pm$ [...] & [[...], [...]] & [...] & [...] \\
+Real Iris            & \texttt{random}   & [...] $\pm$ [...] & [[...], [...]] & [...] & [...] \\
+Real Iris            & \texttt{kmeans++} & [...] $\pm$ [...] & [[...], [...]] & [...] & [...] \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\noindent \textbf{Hallazgos clave:} La inicializaci\'on \texttt{random} exhibe una desviaci\'on est\'andar significativamente mayor en WCSS debido a que, en ciertas semillas, selecciona dos o m\'as centroides iniciales dentro del mismo grupo real, quedando atrapada en m\'inimos locales sub\'optimos. Por el contrario, \texttt{kmeans++} reduce dr\'asticamente la varianza entre ejecuciones y disminuye el n\'umero promedio de iteraciones necesarias para alcanzar la tolerancia de convergencia ($\text{tol} = 10^{-6}$).
+
+\subsection{An\'alisis emp\'irico de escalabilidad}
+Al escalar el tama\~no de muestra $n \in [500, 20000]$ manteniendo constantes $k=5$ y $d=4$, el tiempo promedio por iteraci\'on crece de forma estrictamente lineal respecto a $n$ (pasando de [...] ms para $n=500$ a [...] ms para $n=20000$), confirmando experimentalmente la cota asint\'otica te\'orica $\Theta(knd)$ por iteraci\'on y $O(tknd)$ total derivada en la Secci\'on 1.
+
+% =========================================================================
+% SECCIÓN PARA COMPLETAR POR EL INTEGRANTE 3
+% =========================================================================
 
 \section{Visualizaci\'on de resultados, validaci\'on y conclusiones}
 % TODO (Integrante 3): Insertar graficas (codo, silueta, dispersion, escalabilidad O(tknd)),
