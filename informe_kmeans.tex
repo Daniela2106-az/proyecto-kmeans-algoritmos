@@ -514,32 +514,86 @@ Al escalar el tamaño de muestra $n \in [500, 20000]$ manteniendo constantes $k=
 % =========================================================================
 
 \section{Visualización de resultados, validación y conclusiones}
-% TODO (Integrante 3): Insertar graficas (codo, silueta, dispersion, escalabilidad O(tknd)),
-% validacion frente a libreria estandar (scikit-learn) y conclusiones finales.
-%
-% --- Plantilla para figuras (descomentar y adaptar) ---
-% \begin{figure}[t]
-%   \centering
-%   \includegraphics[width=0.85\textwidth]{codo_separado.pdf}
-%   \caption{Método del codo sobre \textit{Sintético Separado}.}
-%   \label{fig:codo}
-% \end{figure}
-%
-% --- Figuras lado a lado ---
-% \begin{figure}[t]
-%   \centering
-%   \begin{minipage}{0.48\textwidth}\centering
-%     \includegraphics[width=\textwidth]{figura_a.pdf}\caption{Descripción A.}
-%   \end{minipage}\hfill
-%   \begin{minipage}{0.48\textwidth}\centering
-%     \includegraphics[width=\textwidth]{figura_b.pdf}\caption{Descripción B.}
-%   \end{minipage}
-% \end{figure}
-%
-% --- Recuadro de conclusiones ---
-% \begin{resultado}
-%   \textbf{Conclusión principal.} ...
-% \end{resultado}
+
+\subsection{Visualización de los resultados}
+
+La \cref{fig:dispersion} muestra los agrupamientos obtenidos con \texttt{kmeans++} y $k=k^*$. En \textit{Sintético Separado} los cuatro grupos se recuperan sin ambigüedad, mientras que en \textit{Sintético Solapado} y en \textit{Real Iris} (dos primeras variables) las fronteras entre grupos vecinos son difusas.
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=0.9\textwidth]{figures/dispersion.png}
+  \caption{Agrupamientos finales (\texttt{kmeans++}, \texttt{seed}=42) y centroides (cruces negras).}
+  \label{fig:dispersion}
+\end{figure}
+
+La \cref{fig:trayectoria} muestra el efecto de la inicialización sobre la trayectoria de los centroides en \textit{Sintético Separado}. Con \texttt{random} y \texttt{seed}=2, dos centroides parten dentro del mismo grupo y el algoritmo termina en un mínimo local ($\WCSS = 3537.7$), lejos del óptimo observado ($491.3$).
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=0.55\textwidth]{figures/trayectoria.png}
+  \caption{Trayectoria de los centroides con inicialización \texttt{random}.}
+  \label{fig:trayectoria}
+\end{figure}
+
+La \cref{fig:codo_silueta} presenta el método del codo y la silueta promedio al variar $k$. En \textit{Sintético Separado} ambos criterios señalan $k=4$; en los otros dos conjuntos la silueta no coincide con el $k^*$ conocido, por lo que ambos criterios deben leerse en conjunto.
+
+\begin{figure}[t]
+  \centering
+  \begin{minipage}{0.48\textwidth}\centering
+    \includegraphics[width=\textwidth]{figures/codo.png}
+  \end{minipage}\hfill
+  \begin{minipage}{0.48\textwidth}\centering
+    \includegraphics[width=\textwidth]{figures/silueta.png}
+  \end{minipage}
+  \caption{Método del codo (izquierda) y silueta promedio (derecha) en función de $k$.}
+  \label{fig:codo_silueta}
+\end{figure}
+
+Por último, la \cref{fig:tiempo} muestra el tiempo por iteración frente a $n$, que crece de forma aproximadamente lineal, consistente con el costo $\Theta(knd)$ por iteración.
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=0.55\textwidth]{figures/tiempo_vs_n.png}
+  \caption{Tiempo por iteración frente al tamaño de muestra $n$ ($k=5$, $d=4$).}
+  \label{fig:tiempo}
+\end{figure}
+
+\subsection{Validación frente a scikit-learn}
+
+Se validó \texttt{kmeans\_core.py} contra \texttt{sklearn.cluster.KMeans}. Para que la comparación sea justa, ambas implementaciones parten de los mismos centroides iniciales (generados con \texttt{kmeans++} y \texttt{seed}=0) y se compara la inercia final (\cref{tab:valid}).
+
+\begin{table}[t]
+\centering
+\small
+\caption{WCSS final de la implementación propia y de scikit-learn con los mismos centroides iniciales.}
+\label{tab:valid}
+\rowcolors{3}{white}{gris}
+\begin{tabular}{l S[table-format=4.4] S[table-format=4.4]}
+\toprule
+\rowcolor{azulclaro}
+\textbf{Dataset} & {\textbf{WCSS propio}} & {\textbf{WCSS scikit-learn}} \\
+\midrule
+Sintético Separado & 491.2992  & 491.2992  \\
+Sintético Solapado & 6385.7991 & 6385.7991 \\
+Real Iris          & 191.0247  & 191.0247  \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Las inercias coinciden hasta el cuarto decimal en los tres conjuntos, lo que indica que ambas implementaciones ejecutan el mismo algoritmo de Lloyd. Con esta semilla, \textit{Sintético Solapado} y \textit{Real Iris} terminan en un mínimo local (comparar con los mínimos de la \cref{tab:init_stab}); lo importante es que ambas implementaciones llegan al mismo.
+
+\subsection{Conclusiones}
+
+\begin{resultado}
+\begin{itemize}
+  \item La implementación propia reproduce los resultados de scikit-learn cuando parte de los mismos centroides iniciales.
+  \item La inicialización influye mucho en datos bien separados: \texttt{random} puede quedar en mínimos locales con un WCSS hasta 36 veces mayor que el óptimo observado ($17972$ frente a $491$), y \texttt{kmeans++} reduce esa variabilidad y las iteraciones promedio ($6.37 \to 2.30$). En Iris la diferencia es marginal.
+  \item El codo y la silueta no siempre recuperan el $k^*$ real; deben combinarse con conocimiento del dominio.
+  \item El tiempo por iteración crece de forma aproximadamente lineal en $n$, y el tiempo total depende además del número de iteraciones.
+\end{itemize}
+\end{resultado}
+
+\textbf{Limitaciones.} K-Means asume grupos aproximadamente esféricos, es sensible a valores atípicos, converge solo a mínimos locales y requiere fijar $k$. Los tiempos se midieron en una sola máquina con 5 repeticiones, por lo que son orientativos.
 
 % ======================================================================
 \begin{thebibliography}{9}
